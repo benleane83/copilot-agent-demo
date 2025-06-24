@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { useState } from 'react';
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
+  const { getTotalItems } = useCart();
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  
+  const totalItems = getTotalItems();
 
   return (
     <nav className="bg-dark/95 backdrop-blur-sm fixed w-full z-50">
@@ -63,6 +67,18 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Cart Icon */}
+            <Link to="/cart" className="relative text-light hover:text-primary transition-colors">
+              <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m0 0h9m-9 0h9"></path>
+              </svg>
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {totalItems > 99 ? '99+' : totalItems}
+                </span>
+              )}
+            </Link>
+            
             {isLoggedIn ? (
               <>
                 <span className="text-light text-sm">

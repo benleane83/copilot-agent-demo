@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { api } from '../api/config';
+import axios from 'axios';
 
 export interface CartItem {
   productId: number;
@@ -34,115 +36,172 @@ const CartContext = createContext<CartContextType | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [totals, setTotals] = useState<CartTotals>({ subtotal: 0, discount: 0, shipping: 0, total: 0 });
   const [couponCode, setCouponCode] = useState<string | undefined>();
-  const [discount, setDiscount] = useState(0);
 
-  // Sample coupon codes for demo
-  const coupons = [
-    { code: 'SAVE10', type: 'percentage', value: 10, minOrder: 50, description: '10% off orders over $50' },
-    { code: 'WELCOME5', type: 'fixed', value: 5, minOrder: 0, description: '$5 off your order' },
-    { code: 'BIGDEAL', type: 'percentage', value: 25, minOrder: 200, description: '25% off orders over $200' }
-  ];
+  // Simple user ID for demo purposes (in a real app, this would come from auth)
+  const userId = isLoggedIn ? 'demo-user' : null;
 
-  // Clear cart when user logs out
+  // Load cart from backend when user logs in
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (userId) {
+      loadCart();
+    } else {
+      // Clear cart when user logs out
       setItems([]);
+      setTotals({ subtotal: 0, discount: 0, shipping: 0, total: 0 });
       setCouponCode(undefined);
-      setDiscount(0);
     }
-  }, [isLoggedIn]);
+  }, [userId]);
 
-  // Calculate totals
-  const calculateTotals = (): CartTotals => {
-    const subtotal = items.reduce((total, item) => total + (item.productPrice * item.quantity), 0);
-    const shipping = subtotal > 0 ? (subtotal > 100 ? 0 : 10) : 0; // Free shipping over $100
-    const total = subtotal - discount + shipping;
-
-    return {
-      subtotal,
-      discount,
-      shipping,
-      total: Math.max(0, total)
-    };
+  const loadCart = async () => {
+    if (!userId) return;
+    
+    try {
+      const response = await axios.get(`${api.baseURL}${api.endpoints.cart}/${userId}`);
+      const cartData = response.data;
+      
+      // Convert backend format to frontend format
+      const frontendItems: CartItem[] = await Promise.all(
+        cartData.items.map(async (item: any) => {
+          try {
+            const productResponse = await axios.get(`${api.baseURL}${api.endpoints.products}/${item.productId}`);
+            const product = productResponse.data;
+            return {
+              productId: item.productId,
+              productName: product.name,
+              productPrice: product.price,
+              productImage: product.imgName,
+              quantity: item.quantity
+            };
+          } catch {
+            // If product not found, return a placeholder
+            return {
+              productId: item.productId,
+              productName: 'Unknown Product',
+              productPrice: 0,
+              productImage: 'placeholder.png',
+              quantity: item.quantity
+            };
+          }
+        })
+      );
+      
+      setItems(frontendItems);
+      setTotals({
+        subtotal: cartData.subtotal || 0,
+        discount: cartData.discount || 0,
+        shipping: cartData.shipping || 0,
+        total: cartData.total || 0
+      });
+      setCouponCode(cartData.couponCode);
+    } catch (error) {
+      console.error('Failed to load cart:', error);
+    }
   };
 
-  const addToCart = (productId: number, productName: string, productPrice: number, productImage: string, quantity: number) => {
-    if (!isLoggedIn) {
+  const addToCart = async (productId: number, _productName: string, _productPrice: number, _productImage: string, quantity: number) => {
+    if (!isLoggedIn || !userId) {
       alert('Please log in to add items to cart');
       return;
     }
 
-    setItems(prevItems => {
-      const existingItem = prevItems.find(item => item.productId === productId);
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.productId === productId
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+    try {
+      await axios.post(`${api.baseURL}${api.endpoints.cart}/${userId}`, {
+        productId,
+        quantity
+      });
+      
+      // Reload cart to get updated state
+      await loadCart();
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+      alert('Failed to add item to cart');
+    }
+  };
+
+  const removeFromCart = async (productId: number) => {
+    if (!userId) return;
+    
+    try {
+      await axios.delete(`${api.baseURL}${api.endpoints.cart}/${userId}?productId=${productId}`);
+      await loadCart();
+    } catch (error) {
+      console.error('Failed to remove item from cart:', error);
+      alert('Failed to remove item from cart');
+    }
+  };
+
+  const updateQuantity = async (productId: number, quantity: number) => {
+    if (!userId) return;
+    
+    try {
+      if (quantity <= 0) {
+        await removeFromCart(productId);
       } else {
-        return [...prevItems, { productId, productName, productPrice, productImage, quantity }];
+        await axios.put(`${api.baseURL}${api.endpoints.cart}/${userId}`, {
+          productId,
+          quantity
+        });
+        await loadCart();
       }
-    });
-  };
-
-  const removeFromCart = (productId: number) => {
-    setItems(prevItems => prevItems.filter(item => item.productId !== productId));
-  };
-
-  const updateQuantity = (productId: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-    } else {
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.productId === productId
-            ? { ...item, quantity }
-            : item
-        )
-      );
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      alert('Failed to update quantity');
     }
   };
 
   const applyCoupon = async (code: string): Promise<boolean> => {
-    const coupon = coupons.find(c => c.code === code);
-    if (!coupon) {
+    if (!userId) return false;
+    
+    try {
+      await axios.post(`${api.baseURL}${api.endpoints.cart}/${userId}/coupon`, {
+        couponCode: code
+      });
+      await loadCart();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to apply coupon:', error);
+      
+      // Extract error message from response if available
+      const errorMessage = error.response?.data?.error || 'Failed to apply coupon';
+      if (errorMessage.includes('minimum order')) {
+        alert(errorMessage);
+      }
+      
       return false;
     }
-
-    const subtotal = calculateTotals().subtotal;
-    if (coupon.minOrder && subtotal < coupon.minOrder) {
-      alert(`Minimum order value of $${coupon.minOrder} required for this coupon`);
-      return false;
-    }
-
-    setCouponCode(code);
-    if (coupon.type === 'percentage') {
-      setDiscount((subtotal * coupon.value) / 100);
-    } else {
-      setDiscount(coupon.value);
-    }
-
-    return true;
   };
 
-  const removeCoupon = () => {
-    setCouponCode(undefined);
-    setDiscount(0);
+  const removeCoupon = async () => {
+    if (!userId) return;
+    
+    try {
+      await axios.delete(`${api.baseURL}${api.endpoints.cart}/${userId}/coupon`);
+      await loadCart();
+    } catch (error) {
+      console.error('Failed to remove coupon:', error);
+      alert('Failed to remove coupon');
+    }
   };
 
-  const clearCart = () => {
-    setItems([]);
-    setCouponCode(undefined);
-    setDiscount(0);
+  const clearCart = async () => {
+    if (!userId) return;
+    
+    try {
+      // Remove all items one by one (since we don't have a clear endpoint)
+      for (const item of items) {
+        await removeFromCart(item.productId);
+      }
+    } catch (error) {
+      console.error('Failed to clear cart:', error);
+      alert('Failed to clear cart');
+    }
   };
 
   const getItemCount = () => {
     return items.reduce((total, item) => total + item.quantity, 0);
   };
-
-  const totals = calculateTotals();
 
   return (
     <CartContext.Provider value={{

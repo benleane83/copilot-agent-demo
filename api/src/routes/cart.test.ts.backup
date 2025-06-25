@@ -1,0 +1,223 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import request from 'supertest';
+import express from 'express';
+import cartRoutes from './cart';
+
+const app = express();
+app.use(express.json());
+app.use('/api/cart', cartRoutes);
+
+describe('Cart API', () => {
+  const testUserId = 'test-user-1';
+
+  beforeEach(() => {
+    // Reset cart state between tests by making a fresh request
+    // Since we're using in-memory storage, this ensures clean state
+  });
+
+  describe('GET /api/cart/:userId', () => {
+    it('should create and return empty cart for new user', async () => {
+      const response = await request(app)
+        .get(`/api/cart/${testUserId}`)
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        userId: testUserId,
+        items: [],
+        subtotal: 0,
+        discount: 0,
+        shipping: 0,
+        total: 0
+      });
+      expect(response.body.cartId).toBeDefined();
+    });
+  });
+
+  describe('POST /api/cart/:userId/items', () => {
+    it('should add item to cart', async () => {
+      const cartItem = {
+        productId: 1,
+        quantity: 2
+      };
+
+      const response = await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send(cartItem)
+        .expect(200);
+
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items[0]).toMatchObject(cartItem);
+      expect(response.body.subtotal).toBeGreaterThan(0);
+    });
+
+    it('should add to existing item quantity', async () => {
+      const cartItem = {
+        productId: 1,
+        quantity: 1
+      };
+
+      // Add item first time
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send(cartItem);
+
+      // Add same item again
+      const response = await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send(cartItem)
+        .expect(200);
+
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items[0].quantity).toBe(2);
+    });
+
+    it('should return error for invalid product', async () => {
+      const cartItem = {
+        productId: 99999,
+        quantity: 1
+      };
+
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send(cartItem)
+        .expect(404);
+    });
+  });
+
+  describe('PUT /api/cart/:userId/items/:productId', () => {
+    beforeEach(async () => {
+      // Add an item to cart for testing updates
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 1, quantity: 3 });
+    });
+
+    it('should update item quantity', async () => {
+      const response = await request(app)
+        .put(`/api/cart/${testUserId}/items/1`)
+        .send({ quantity: 5 })
+        .expect(200);
+
+      expect(response.body.items[0].quantity).toBe(5);
+    });
+
+    it('should remove item when quantity is 0', async () => {
+      const response = await request(app)
+        .put(`/api/cart/${testUserId}/items/1`)
+        .send({ quantity: 0 })
+        .expect(200);
+
+      expect(response.body.items).toHaveLength(0);
+    });
+
+    it('should return error for non-existent item', async () => {
+      await request(app)
+        .put(`/api/cart/${testUserId}/items/999`)
+        .send({ quantity: 1 })
+        .expect(404);
+    });
+  });
+
+  describe('DELETE /api/cart/:userId/items/:productId', () => {
+    beforeEach(async () => {
+      // Add items to cart for testing removal
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 1, quantity: 2 });
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 2, quantity: 1 });
+    });
+
+    it('should remove item from cart', async () => {
+      const response = await request(app)
+        .delete(`/api/cart/${testUserId}/items/1`)
+        .expect(200);
+
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items[0].productId).toBe(2);
+    });
+
+    it('should return error for non-existent item', async () => {
+      await request(app)
+        .delete(`/api/cart/${testUserId}/items/999`)
+        .expect(404);
+    });
+  });
+
+  describe('POST /api/cart/:userId/coupon', () => {
+    beforeEach(async () => {
+      // Add items to cart with sufficient value for coupons
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 1, quantity: 1 }); // PowerTool Pro X1 - $1299.99
+    });
+
+    it('should apply valid coupon', async () => {
+      const response = await request(app)
+        .post(`/api/cart/${testUserId}/coupon`)
+        .send({ couponCode: 'SAVE10' })
+        .expect(200);
+
+      expect(response.body.couponCode).toBe('SAVE10');
+      expect(response.body.discount).toBeGreaterThan(0);
+    });
+
+    it('should return error for invalid coupon', async () => {
+      await request(app)
+        .post(`/api/cart/${testUserId}/coupon`)
+        .send({ couponCode: 'INVALID' })
+        .expect(400);
+    });
+
+    it('should return error for coupon with insufficient minimum order', async () => {
+      // Clear cart and add small value item
+      await request(app)
+        .put(`/api/cart/${testUserId}/items/1`)
+        .send({ quantity: 0 });
+      
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 2, quantity: 1 }); // Webcam Pro - $49.99
+
+      await request(app)
+        .post(`/api/cart/${testUserId}/coupon`)
+        .send({ couponCode: 'SAVE10' }) // Requires $50 minimum
+        .expect(400);
+    });
+  });
+
+  describe('DELETE /api/cart/:userId/coupon', () => {
+    beforeEach(async () => {
+      // Add items and apply coupon
+      await request(app)
+        .post(`/api/cart/${testUserId}/items`)
+        .send({ productId: 1, quantity: 1 });
+      await request(app)
+        .post(`/api/cart/${testUserId}/coupon`)
+        .send({ couponCode: 'SAVE10' });
+    });
+
+    it('should remove coupon from cart', async () => {
+      const response = await request(app)
+        .delete(`/api/cart/${testUserId}/coupon`)
+        .expect(200);
+
+      expect(response.body.couponCode).toBeUndefined();
+      expect(response.body.discount).toBe(0);
+    });
+  });
+
+  describe('GET /api/cart/:userId/coupons', () => {
+    it('should return available coupons', async () => {
+      const response = await request(app)
+        .get(`/api/cart/${testUserId}/coupons`)
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body[0]).toHaveProperty('code');
+      expect(response.body[0]).toHaveProperty('discountType');
+    });
+  });
+});

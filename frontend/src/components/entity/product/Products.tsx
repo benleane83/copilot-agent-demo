@@ -16,14 +16,25 @@ interface Product {
 }
 
 const fetchProducts = async (): Promise<Product[]> => {
-  const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
-  return data;
+  console.log('Fetching products from:', `${api.baseURL}${api.endpoints.products}`);
+  try {
+    const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
+    console.log('Products fetched successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
 };
 
 export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const { addToCart } = useCart();
+  
+  console.log('Products component rendering');
+  console.log('API_BASE_URL:', api.baseURL);
+  
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
 
   const filteredProducts = products?.filter(product => 
@@ -70,10 +81,17 @@ export default function Products() {
   }
 
   if (error) {
+    console.error('Products query error:', error);
     return (
       <div className="min-h-screen bg-dark pt-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-red-500 text-center">Failed to fetch products</div>
+          <div className="text-red-500 text-center">
+            <div>Failed to fetch products</div>
+            <div className="text-sm mt-2">API URL: {api.baseURL}{api.endpoints.products}</div>
+            {error instanceof Error && (
+              <div className="text-sm mt-1">Error: {error.message}</div>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -8,6 +8,10 @@ declare global {
 }
 
 const getBaseUrl = () => {
+    console.log('getBaseUrl called');
+    console.log('typeof window:', typeof window);
+    console.log('window.RUNTIME_CONFIG:', typeof window !== 'undefined' ? window.RUNTIME_CONFIG : 'window not available');
+    
     // First check runtime configuration (from runtime-config.js)
     if (typeof window !== 'undefined' && window.RUNTIME_CONFIG?.API_URL) {
         console.log('Using runtime config API_URL:', window.RUNTIME_CONFIG.API_URL);
@@ -16,6 +20,7 @@ const getBaseUrl = () => {
     
     // Check if we're in a Codespace
     const codespaceName = process.env.CODESPACE_NAME;
+    console.log('process.env.CODESPACE_NAME:', codespaceName);
     if (codespaceName) {
         // Use the same protocol as the current page
         const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
@@ -32,6 +37,8 @@ const getBaseUrl = () => {
 };
 
 export const API_BASE_URL = getBaseUrl();
+
+console.log('Final API_BASE_URL:', API_BASE_URL);
 
 export const api = {
     baseURL: API_BASE_URL,

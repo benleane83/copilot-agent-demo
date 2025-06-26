@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useQuery } from 'react-query';
+// import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
 import { useCart } from '../../../context/CartContext';
 
@@ -15,27 +15,38 @@ interface Product {
   supplierId: number;
 }
 
-const fetchProducts = async (): Promise<Product[]> => {
-  console.log('Fetching products from:', `${api.baseURL}${api.endpoints.products}`);
-  try {
-    const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
-    console.log('Products fetched successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    throw error;
-  }
-};
-
 export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
   const { addToCart } = useCart();
   
   console.log('Products component rendering');
   console.log('API_BASE_URL:', api.baseURL);
   
-  const { data: products, isLoading, error } = useQuery('products', fetchProducts);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('Fetching products from:', `${api.baseURL}${api.endpoints.products}`);
+        const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
+        console.log('Products fetched successfully:', data);
+        setProducts(data);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+  
+  // const { data: products, isLoading, error } = useQuery('products', fetchProducts);
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

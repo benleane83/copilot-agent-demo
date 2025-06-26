@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 // import { useQuery } from 'react-query';
-import { api } from '../../../api/config';
+import { api, getCurrentApiUrl } from '../../../api/config';
 import { useCart } from '../../../context/CartContext';
 
 interface Product {
@@ -31,8 +31,12 @@ export default function Products() {
       try {
         setIsLoading(true);
         setError(null);
-        console.log('Fetching products from:', `${api.baseURL}${api.endpoints.products}`);
-        const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
+        const currentApiUrl = getCurrentApiUrl();
+        const fullUrl = `${currentApiUrl}${api.endpoints.products}`;
+        console.log('Fetching products from:', fullUrl);
+        console.log('Static API_BASE_URL:', api.baseURL);
+        console.log('Dynamic API URL:', currentApiUrl);
+        const { data } = await axios.get(fullUrl);
         console.log('Products fetched successfully:', data);
         setProducts(data);
       } catch (err) {

@@ -25,20 +25,27 @@ const getBaseUrl = () => {
         // Use the same protocol as the current page
         const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
         const protocolToUse = protocol.includes('https') ? 'https' : 'http';
-        console.log(`Using Codespace URL with ${protocolToUse} protocol`);
-        return `${protocolToUse}://${codespaceName}-3000.app.github.dev`;
+        const url = `${protocolToUse}://${codespaceName}-3000.app.github.dev`;
+        console.log(`Using Codespace URL: ${url}`);
+        return url;
     }
     
     // Auto-detect protocol for local development
     const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
     const protocolToUse = protocol.includes('https') ? 'https' : 'http';
-    console.log(`Using default localhost URL with ${protocolToUse} protocol`);
-    return `${protocolToUse}://localhost:3000`;
+    const url = `${protocolToUse}://localhost:3000`;
+    console.log(`Using default localhost URL: ${url}`);
+    return url;
 };
 
 export const API_BASE_URL = getBaseUrl();
 
 console.log('Final API_BASE_URL:', API_BASE_URL);
+
+// Function to get current API URL (useful for runtime calls)
+export const getCurrentApiUrl = () => {
+    return getBaseUrl();
+};
 
 export const api = {
     baseURL: API_BASE_URL,

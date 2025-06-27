@@ -3,6 +3,9 @@ name: Create Issue and Assign Copilot
 on:
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   create_issue:
     runs-on: ubuntu-latest

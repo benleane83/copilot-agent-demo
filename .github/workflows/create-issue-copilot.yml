@@ -1,0 +1,22 @@
+name: Create Issue and Assign Copilot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "New Issue from GitHub Action",
+              body: "This issue was created automatically.",
+              assignees: ["Copilot"]
+            });
+            core.info(`Created issue #${issue.data.number}`);

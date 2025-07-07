@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
+import { useCart } from '../../../context/CartContext';
 
 interface Product {
   productId: number;
@@ -23,6 +24,7 @@ export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
+  const { addToCart } = useCart();
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -38,9 +40,10 @@ export default function Products() {
 
   const handleAddToCart = (productId: number) => {
     const quantity = quantities[productId] || 0;
-    if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
+    const product = products?.find(p => p.productId === productId);
+    
+    if (quantity > 0 && product) {
+      addToCart(product, quantity);
       setQuantities(prev => ({
         ...prev,
         [productId]: 0

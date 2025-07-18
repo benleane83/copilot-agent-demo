@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useQuery } from 'react-query';
-import { api } from '../../../api/config';
+// import { useQuery } from 'react-query';
+import { api, getCurrentApiUrl } from '../../../api/config';
+import { useCart } from '../../../context/CartContext';
 
 interface Product {
   productId: number;
@@ -14,15 +15,42 @@ interface Product {
   supplierId: number;
 }
 
-const fetchProducts = async (): Promise<Product[]> => {
-  const { data } = await axios.get(`${api.baseURL}${api.endpoints.products}`);
-  return data;
-};
-
 export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: products, isLoading, error } = useQuery('products', fetchProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+  const { addToCart } = useCart();
+  
+  console.log('Products component rendering');
+  console.log('API_BASE_URL:', api.baseURL);
+  
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const currentApiUrl = getCurrentApiUrl();
+        const fullUrl = `${currentApiUrl}${api.endpoints.products}`;
+        console.log('Fetching products from:', fullUrl);
+        console.log('Static API_BASE_URL:', api.baseURL);
+        console.log('Dynamic API URL:', currentApiUrl);
+        const { data } = await axios.get(fullUrl);
+        console.log('Products fetched successfully:', data);
+        setProducts(data);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+  
+  // const { data: products, isLoading, error } = useQuery('products', fetchProducts);
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -38,9 +66,16 @@ export default function Products() {
 
   const handleAddToCart = (productId: number) => {
     const quantity = quantities[productId] || 0;
-    if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
+    const product = products?.find(p => p.productId === productId);
+    
+    if (quantity > 0 && product) {
+      addToCart({
+        productId: product.productId,
+        name: product.name,
+        price: product.price
+      }, quantity);
+      
+      // Reset quantity for this product
       setQuantities(prev => ({
         ...prev,
         [productId]: 0
@@ -61,10 +96,17 @@ export default function Products() {
   }
 
   if (error) {
+    console.error('Products query error:', error);
     return (
       <div className="min-h-screen bg-dark pt-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-red-500 text-center">Failed to fetch products</div>
+          <div className="text-red-500 text-center">
+            <div>Failed to fetch products</div>
+            <div className="text-sm mt-2">API URL: {api.baseURL}{api.endpoints.products}</div>
+            {error instanceof Error && (
+              <div className="text-sm mt-1">Error: {error.message}</div>
+            )}
+          </div>
         </div>
       </div>
     );

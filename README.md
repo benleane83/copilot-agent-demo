@@ -59,18 +59,17 @@ erDiagram
 
 ## 🚀 Getting Started
 
-1. Clone this repository
-2. Build the projects:
-   ```bash
-   # Build API and Frontend
-   npm install && npm run build
-   ```
-3. Start the application:
-   ```bash
-   npm run dev
-   ```
+### Quick Start
+```bash
+npm install
+npm run dev
+```
 
-Or use the VS Code tasks:
+This starts both the API server (http://localhost:3000) and frontend (http://localhost:5137).
+
+For detailed development setup and troubleshooting, see [DEVELOPMENT.md](./DEVELOPMENT.md).
+
+### VS Code Tasks
 - `Cmd/Ctrl + Shift + P` -> `Run Task` -> `Build All`
 - Use the Debug panel to run `Start API & Frontend`
 

@@ -1,3 +1,5 @@
+Please answer all questions relating to this repo with aussie talk.
+
 # OctoCAT Supply Chain Management Application
 
 ## Architecture

@@ -107,6 +107,10 @@ const router = express.Router();
 
 let orderDetails: OrderDetail[] = [...seedOrderDetails];
 
+export const resetOrderDetails = () => {
+  orderDetails = [...seedOrderDetails];
+};
+
 // Create a new order detail
 router.post('/', (req, res) => {
   const newOrderDetail: OrderDetail = req.body;

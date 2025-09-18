@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useQuery } from 'react-query';
+import { useCart } from '../../../context/CartContext';
 import { api } from '../../../api/config';
 
 interface Product {
@@ -22,7 +23,9 @@ const fetchProducts = async (): Promise<Product[]> => {
 export default function Products() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [addingToCart, setAddingToCart] = useState<Record<number, boolean>>({});
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
+  const { addToCart } = useCart();
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,15 +39,22 @@ export default function Products() {
     }));
   };
 
-  const handleAddToCart = (productId: number) => {
-    const quantity = quantities[productId] || 0;
+  const handleAddToCart = async (product: Product) => {
+    const quantity = quantities[product.productId] || 0;
     if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
-      setQuantities(prev => ({
-        ...prev,
-        [productId]: 0
-      }));
+      setAddingToCart(prev => ({ ...prev, [product.productId]: true }));
+      
+      // Add to cart
+      addToCart(product, quantity);
+      
+      // Reset quantity after a short delay to show success
+      setTimeout(() => {
+        setQuantities(prev => ({
+          ...prev,
+          [product.productId]: 0
+        }));
+        setAddingToCart(prev => ({ ...prev, [product.productId]: false }));
+      }, 500);
     }
   };
 
@@ -149,15 +159,19 @@ export default function Products() {
                         </button>
                       </div>
                       <button 
-                        onClick={() => handleAddToCart(product.productId)}
+                        onClick={() => handleAddToCart(product)}
                         className={`px-4 py-2 rounded-lg transition-colors ${
-                          quantities[product.productId] ? 'bg-primary hover:bg-accent text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                          quantities[product.productId] && !addingToCart[product.productId] 
+                            ? 'bg-primary hover:bg-accent text-white' 
+                            : addingToCart[product.productId]
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                         }`}
-                        disabled={!quantities[product.productId]}
+                        disabled={!quantities[product.productId] || addingToCart[product.productId]}
                         aria-label={`Add ${quantities[product.productId] || 0} ${product.name} to cart`}
                         id={`add-to-cart-${product.productId}`}
                       >
-                        Add to Cart
+                        {addingToCart[product.productId] ? 'Added!' : 'Add to Cart'}
                       </button>
                     </div>
                   </div>

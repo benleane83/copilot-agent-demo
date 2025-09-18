@@ -46,3 +46,7 @@ jspm_packages/
 
 dist/
 coverage/
+
+# Testing files
+frontend/playwright-report/
+frontend/test-results/

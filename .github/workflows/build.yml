@@ -25,4 +25,4 @@ jobs:
         run: npm run build --workspace=api
 
       - name: Build Frontend
-        run: npm run buid --workspace=frontend
+        run: npm run build --workspace=frontend

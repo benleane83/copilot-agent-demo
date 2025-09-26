@@ -12,6 +12,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
+      GH_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
       
     steps:
       - name: Checkout repository
@@ -22,7 +26,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
       
       - name: Install dependencies
@@ -37,26 +41,20 @@ jobs:
             sudo apt update
             sudo apt install gh
           fi
-          
+
           # Install Copilot CLI using npm
           npm install -g @github/copilot
-          
-          # Add npm global bin to PATH
-          echo "$(npm config get prefix)/bin" >> $GITHUB_PATH
-          
-          # Also export for current session
-          export PATH="$(npm config get prefix)/bin:$PATH"
-          
+
+          # Capture npm global bin and add to PATH
+          COPILOT_BIN_DIR="$(npm config get prefix)/bin"
+          echo "$COPILOT_BIN_DIR" >> "$GITHUB_PATH"
+          export PATH="$COPILOT_BIN_DIR:$PATH"
+
           # Verify installation
-          which copilot || echo "Copilot not found in PATH yet"
-          copilot --version || echo "Will be available in next step"
+          "$COPILOT_BIN_DIR/copilot" --version || echo "Will be available in next step"
       
-      - name: Authenticate with GitHub
-        env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
-        run: |
-          echo "$GITHUB_TOKEN" | gh auth login --with-token
-          gh auth status
+      - name: Verify GitHub CLI authentication
+        run: gh auth status
       
       - name: Configure Copilot CLI for CI
         run: |
@@ -71,13 +69,8 @@ jobs:
             "auto_approve_safe_tools": true
           }
           EOF
-          
-          # Mark current directory as trusted
-          copilot /add-dir ${{ github.workspace }}
       
       - name: Run Code Analysis with Copilot CLI
-        env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           cd ${{ github.workspace }}
           
@@ -88,8 +81,6 @@ jobs:
           cat analysis_output.txt
       
       - name: Generate Test Coverage Report
-        env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           # Run tests first
           npm run test:api
@@ -101,8 +92,6 @@ jobs:
       
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           # Combine analysis results
           {

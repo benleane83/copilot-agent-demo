@@ -1,0 +1,124 @@
+name: Copilot CLI Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  copilot-analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Get full history for better context
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Install GitHub CLI and Copilot CLI
+        run: |
+          # Install GitHub CLI if not already present
+          if ! command -v gh &> /dev/null; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh
+          fi
+          
+          # Install Copilot CLI (adjust URL when official release is available)
+          curl -L -o copilot-cli.tar.gz "https://github.com/github/copilot-cli/releases/latest/download/copilot-cli-linux-amd64.tar.gz"
+          tar -xzf copilot-cli.tar.gz
+          sudo mv copilot /usr/local/bin/
+          chmod +x /usr/local/bin/copilot
+      
+      - name: Authenticate with GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          gh auth status
+      
+      - name: Configure Copilot CLI for CI
+        run: |
+          # Create config directory
+          mkdir -p ~/.config/github-copilot-cli
+          
+          # Configure for non-interactive use
+          cat > ~/.config/github-copilot-cli/config.json << 'EOF'
+          {
+            "interactive": false,
+            "trust_all_directories": true,
+            "auto_approve_safe_tools": true
+          }
+          EOF
+          
+          # Mark current directory as trusted
+          copilot /add-dir ${{ github.workspace }}
+      
+      - name: Run Code Analysis with Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd ${{ github.workspace }}
+          
+          # Run Copilot CLI analysis
+          copilot --non-interactive "Analyze the codebase and provide a summary of the architecture and any potential improvements" > analysis_output.txt
+          
+          # Display the output
+          cat analysis_output.txt
+      
+      - name: Generate Test Coverage Report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Run tests first
+          npm run test:api
+          
+          # Ask Copilot to analyze test coverage
+          copilot -p "Review the test coverage report in the coverage directory and suggest areas for improvement" > test_analysis.txt
+          
+          cat test_analysis.txt
+      
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Combine analysis results
+          {
+            echo "## 🤖 Copilot CLI Analysis"
+            echo ""
+            echo "### Code Architecture Analysis"
+            echo '```'
+            cat analysis_output.txt
+            echo '```'
+            echo ""
+            echo "### Test Coverage Analysis"  
+            echo '```'
+            cat test_analysis.txt
+            echo '```'
+          } > comment_body.txt
+          
+          # Post comment on PR
+          gh pr comment ${{ github.event.number }} --body-file comment_body.txt
+      
+      - name: Upload Analysis Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-analysis-results
+          path: |
+            analysis_output.txt
+            test_analysis.txt

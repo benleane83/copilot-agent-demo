@@ -1,4 +1,4 @@
-name: Copilot CLI Integration
+name: Copilot CLI Code Analysis
 
 on:
   push:
@@ -32,16 +32,8 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Install GitHub CLI and Copilot CLI
+      - name: Install GitHub Copilot CLI
         run: |
-          # Install GitHub CLI if not already present
-          if ! command -v gh &> /dev/null; then
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh
-          fi
-
           # Install Copilot CLI using npm
           npm install -g @github/copilot
 
@@ -53,23 +45,6 @@ jobs:
           # Verify installation
           "$COPILOT_BIN_DIR/copilot" --version || echo "Will be available in next step"
       
-      - name: Verify GitHub CLI authentication
-        run: gh auth status
-      
-      - name: Configure Copilot CLI for CI
-        run: |
-          # Create config directory
-          mkdir -p ~/.config/github-copilot-cli
-          
-          # Configure for non-interactive use
-          cat > ~/.config/github-copilot-cli/config.json << 'EOF'
-          {
-            "interactive": false,
-            "trust_all_directories": true,
-            "auto_approve_safe_tools": true
-          }
-          EOF
-      
       - name: Run Code Analysis with Copilot CLI
         run: |
           cd ${{ github.workspace }}
@@ -80,31 +55,14 @@ jobs:
           # Display the output
           cat analysis_output.txt
       
-      - name: Generate Test Coverage Report
-        run: |
-          # Run tests first
-          npm run test:api
-          
-          # Ask Copilot to analyze test coverage
-          copilot -p "Review the test coverage report in the coverage directory and suggest areas for improvement" > test_analysis.txt
-          
-          cat test_analysis.txt
-      
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
         run: |
-          # Combine analysis results
+          # Output analysis results
           {
-            echo "## 🤖 Copilot CLI Analysis"
-            echo ""
-            echo "### Code Architecture Analysis"
+            echo "## 🤖 Copilot Code Architecture Analysis"
             echo '```'
             cat analysis_output.txt
-            echo '```'
-            echo ""
-            echo "### Test Coverage Analysis"  
-            echo '```'
-            cat test_analysis.txt
             echo '```'
           } > comment_body.txt
           
@@ -117,4 +75,3 @@ jobs:
           name: copilot-analysis-results
           path: |
             analysis_output.txt
-            test_analysis.txt

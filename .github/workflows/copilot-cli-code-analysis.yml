@@ -14,8 +14,6 @@ jobs:
       pull-requests: write
     env:
       GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
-      GH_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
       
     steps:
       - name: Checkout repository

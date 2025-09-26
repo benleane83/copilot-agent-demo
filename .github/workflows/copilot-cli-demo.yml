@@ -75,7 +75,7 @@ jobs:
           cd ${{ github.workspace }}
           
           # Run Copilot CLI analysis
-          copilot --non-interactive "Analyze the codebase and provide a summary of the architecture and any potential improvements" > analysis_output.txt
+          copilot -p "Analyze the codebase and provide a summary of the architecture and any potential improvements" > analysis_output.txt
           
           # Display the output
           cat analysis_output.txt

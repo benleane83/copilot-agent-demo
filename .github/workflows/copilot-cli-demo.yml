@@ -38,15 +38,15 @@ jobs:
             sudo apt install gh
           fi
           
-          # Install Copilot CLI (adjust URL when official release is available)
-          curl -L -o copilot-cli.tar.gz "https://github.com/github/copilot-cli/releases/latest/download/copilot-cli-linux-amd64.tar.gz"
-          tar -xzf copilot-cli.tar.gz
-          sudo mv copilot /usr/local/bin/
-          chmod +x /usr/local/bin/copilot
+          # Install Copilot CLI using npm
+          npm install -g @github/copilot
+          
+          # Verify installation
+          copilot --version
       
       - name: Authenticate with GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           echo "$GITHUB_TOKEN" | gh auth login --with-token
           gh auth status
@@ -70,7 +70,7 @@ jobs:
       
       - name: Run Code Analysis with Copilot CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           cd ${{ github.workspace }}
           
@@ -82,7 +82,7 @@ jobs:
       
       - name: Generate Test Coverage Report
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           # Run tests first
           npm run test:api
@@ -95,7 +95,7 @@ jobs:
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_PAT }}
         run: |
           # Combine analysis results
           {

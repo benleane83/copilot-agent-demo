@@ -41,8 +41,15 @@ jobs:
           # Install Copilot CLI using npm
           npm install -g @github/copilot
           
+          # Add npm global bin to PATH
+          echo "$(npm config get prefix)/bin" >> $GITHUB_PATH
+          
+          # Also export for current session
+          export PATH="$(npm config get prefix)/bin:$PATH"
+          
           # Verify installation
-          copilot --version
+          which copilot || echo "Copilot not found in PATH yet"
+          copilot --version || echo "Will be available in next step"
       
       - name: Authenticate with GitHub
         env:

@@ -47,8 +47,11 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           
-          # Run Copilot CLI analysis
-          copilot -p "Analyze the codebase and provide a summary of the architecture and any potential improvements" > analysis_output.txt
+          # Read the code analysis prompt from file
+          PROMPT_TEXT=$(cat .github/prompts/code-analysis.prompt.md)
+          
+          # Run Copilot CLI analysis using the prompt file
+          copilot -p "$PROMPT_TEXT" > analysis_output.txt
           
           # Display the output
           cat analysis_output.txt
@@ -58,7 +61,7 @@ jobs:
         run: |
           # Output analysis results
           {
-            echo "## 🤖 Copilot Code Architecture Analysis"
+            echo "## 🤖 Copilot Code Analysis"
             echo '```'
             cat analysis_output.txt
             echo '```'

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
+import AddToCartButton from '../../cart/AddToCartButton';
 
 interface Product {
   productId: number;
@@ -37,15 +38,11 @@ export default function Products() {
   };
 
   const handleAddToCart = (productId: number) => {
-    const quantity = quantities[productId] || 0;
-    if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
-      setQuantities(prev => ({
-        ...prev,
-        [productId]: 0
-      }));
-    }
+    // Reset quantity to 0 after successful add
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: 0
+    }));
   };
 
   if (isLoading) {
@@ -148,17 +145,13 @@ export default function Products() {
                           <span aria-hidden="true">+</span>
                         </button>
                       </div>
-                      <button 
-                        onClick={() => handleAddToCart(product.productId)}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          quantities[product.productId] ? 'bg-primary hover:bg-accent text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                        }`}
+                      <AddToCartButton
+                        productId={product.productId}
+                        quantity={quantities[product.productId] || 0}
                         disabled={!quantities[product.productId]}
-                        aria-label={`Add ${quantities[product.productId] || 0} ${product.name} to cart`}
-                        id={`add-to-cart-${product.productId}`}
-                      >
-                        Add to Cart
-                      </button>
+                        onSuccess={() => handleAddToCart(product.productId)}
+                        className="w-full"
+                      />
                     </div>
                   </div>
                 </div>

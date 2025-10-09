@@ -1,28 +1,37 @@
 {
-    "inputs": [
-        {
-            "id": "github_token",
-            "type": "promptString",
-            "description": "GitHub Personal Access Token",
-            "password": true
-        }
-    ],
-    "servers": {
-        "playwright": {
-            "command": "npx",
-            "args": [
-                "@playwright/mcp@latest",
-                "--browser=msedge"
-            ]
-        },
-        "Azure MCP Server": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@azure/mcp@latest",
-                "server",
-                "start"
-            ]
-        }
+  "inputs": [
+    {
+      "id": "github_token",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token",
+      "password": true
     }
+  ],
+  "servers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--browser=msedge"
+      ]
+    },
+    "Azure MCP Server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@azure/mcp@latest",
+        "server",
+        "start"
+      ]
+    },
+    "playwright-test": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "playwright",
+        "run-test-mcp-server"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  }
 }

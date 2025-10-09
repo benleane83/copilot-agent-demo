@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
+import CartIcon from './CartIcon';
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
@@ -63,6 +64,7 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <CartIcon />
             {isLoggedIn ? (
               <>
                 <span className="text-light text-sm">

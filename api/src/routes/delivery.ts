@@ -176,4 +176,10 @@ router.delete('/:id', (req, res) => {
   }
 });
 
+// For testing: allow resetting the in-memory deliveries array
+// @ts-ignore
+router.__setDeliveries = (arr: Delivery[]) => {
+  deliveries = arr;
+};
+
 export default router;

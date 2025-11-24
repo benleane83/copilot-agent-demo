@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { useState } from 'react';
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
+  const { cart } = useCart();
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+
+  const cartItemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   return (
     <nav className="bg-dark/95 backdrop-blur-sm fixed w-full z-50">
@@ -24,6 +28,14 @@ export default function Navigation() {
             <div className="ml-10 flex items-baseline space-x-4">
               <Link to="/" className="text-light hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Home</Link>
               <Link to="/products" className="text-light hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Products</Link>
+              <Link to="/cart" className="text-light hover:text-primary px-3 py-2 rounded-md text-sm font-medium relative">
+                Cart
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
               <Link to="/about" className="text-light hover:text-primary px-3 py-2 rounded-md text-sm font-medium">About us</Link>
               {isAdmin && (
                 <div className="relative">
